@@ -10,8 +10,7 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 
 import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,6 +26,7 @@ public class Brand {
     private String _url;
     private String _classifier;
     private List<String> _images;
+    private File _classifierFile;
 
     //Constructor
     public Brand(){
@@ -39,14 +39,19 @@ public class Brand {
         _images=images;
     }
 
-    public String getClassifierFile(Context context, String baseUrl, RequestQueue queue){
+    /**
+     * Get the classifier file of this brand and save it in cache
+     * @param context context of this app
+     * @param baseUrl the absolute path of the web site
+     * @param queue Queue that contains all callback
+     */
+    public void getClassifierFile(final Context context, String baseUrl, RequestQueue queue){
 
-        final String pathFile = context.getCacheDir()+ this._classifier;
+        final String fileName = this._classifier.substring(0,this._classifier.indexOf('.'));
         String url = baseUrl+"/classifiers/"+this._classifier;
 
-        final File classifierFile = new File(pathFile);
 
-        if(!classifierFile.exists()) {
+        if( _classifierFile == null || !_classifierFile.exists()) {
 
             //Create CallBack
             StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
@@ -54,13 +59,17 @@ public class Brand {
                         @Override
                         public void onResponse(String response) {
                             try {
-                                classifierFile.mkdirs();
-                                FileWriter writer = new FileWriter(classifierFile);
-                                writer.append(response);
-                                writer.flush();
-                                writer.close();
-                                Log.i(tag, pathFile+" Saved");
-                            } catch (IOException e) {
+                                _classifierFile = File.createTempFile(fileName, ".xml", context.getCacheDir());
+                                FileOutputStream outputStream = new FileOutputStream(_classifierFile);
+                                outputStream.write(response.getBytes());
+                                outputStream.close();
+                                if(_classifierFile.exists()){
+                                    Log.i(tag, _classifierFile.getPath()+" Saved, size=" + _classifierFile.length());
+                                }else {
+                                    Log.i(tag, _classifierFile.getPath()+" error to save");
+                                }
+
+                            } catch (Exception e) {
                                 e.printStackTrace();
                             }
                         }
@@ -69,14 +78,14 @@ public class Brand {
                     new Response.ErrorListener() {
                         @Override
                         public void onErrorResponse(VolleyError error) {
-                            Log.i(tag, pathFile+" Not Saved");
+                            Log.i(tag, _classifierFile.getPath()+" Not Saved");
                         }
                     }
             );
             queue.add(stringRequest);
+        }else {
+            Log.i(tag, _classifierFile.getPath()+" already Saved");
         }
-
-        return pathFile;
     }
 
     public String get_brandName() {
@@ -113,5 +122,21 @@ public class Brand {
 
     public void addImage(String image){
         this._images.add(image);
+    }
+
+    /**
+     * Method to override equals
+     * @param o Object
+     * @return true if object's brandName is equal to this brandName
+     */
+    @Override
+    public boolean equals(Object o){
+        if(o instanceof Brand){
+            Brand object = (Brand) o;
+            if(this.get_brandName().equals(object.get_brandName())){
+                return true;
+            }
+        }
+        return false;
     }
 }
