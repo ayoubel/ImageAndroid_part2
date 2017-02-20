@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/ImageAndroid_part2.iml" filepath="$PROJECT_DIR$/ImageAndroid_part2.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
       <module fileurl="file://$PROJECT_DIR$/tpServiceRest.iml" filepath="$PROJECT_DIR$/tpServiceRest.iml" />
     </modules>
