@@ -226,7 +226,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     protected void downloadImage(String brandToAnalyse){
-        String  BrandUrl = url +"/train_images/"+brandToAnalyse+"_16.jpg" ;
+        String  BrandUrl = url +"/train_images/"+brandToAnalyse+"_13.jpg" ;
         ImageRequest imageRequest = new ImageRequest(BrandUrl,
                 new Response.Listener<Bitmap>(){
                     @Override
