@@ -9,13 +9,41 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="android.tpservicerest.MainActivity">
 
+
+
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Request"
-        android:id="@+id/btRequest"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="44dp" />
+        android:text="Capture"
+        android:id="@+id/btnCapture"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Photos Library"
+        android:id="@+id/btnLibrary"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Analysis"
+        android:id="@+id/btnAnalysis"
+        android:layout_alignParentBottom="true"
+        android:layout_toStartOf="@+id/btnLibrary" />
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/imageCaptured"
+        android:layout_alignParentStart="true"
+        android:layout_above="@+id/btnAnalysis"
+        android:layout_alignParentEnd="false"
+        android:layout_below="@+id/btnCapture"
+        android:contentDescription="" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -24,5 +52,6 @@
         android:layout_alignParentStart="true"
         android:layout_alignParentEnd="true"
         android:layout_alignParentBottom="true"
-        android:layout_below="@+id/btRequest" />
+        android:layout_below="@+id/imageCaptured" />
+
 </RelativeLayout>

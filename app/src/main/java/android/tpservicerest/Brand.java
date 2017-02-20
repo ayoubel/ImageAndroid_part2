@@ -9,6 +9,8 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 
+import org.bytedeco.javacpp.opencv_ml;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
@@ -27,6 +29,7 @@ public class Brand {
     private String _classifier;
     private List<String> _images;
     private File _classifierFile;
+    private opencv_ml.CvSVM _classifierDesc;
 
     //Constructor
     public Brand(){
@@ -41,6 +44,7 @@ public class Brand {
 
     /**
      * Get the classifier file of this brand and save it in cache
+     * open the file to write the resultant descriptor
      * @param context context of this app
      * @param baseUrl the absolute path of the web site
      * @param queue Queue that contains all callback
@@ -63,6 +67,9 @@ public class Brand {
                                 FileOutputStream outputStream = new FileOutputStream(_classifierFile);
                                 outputStream.write(response.getBytes());
                                 outputStream.close();
+                                //write the resultant descriptor
+                                _classifierDesc = new opencv_ml.CvSVM();
+                                _classifierDesc.load(_classifierFile.getAbsolutePath());
                                 if(_classifierFile.exists()){
                                     Log.i(tag, _classifierFile.getPath()+" Saved, size=" + _classifierFile.length());
                                 }else {
@@ -112,6 +119,14 @@ public class Brand {
         this._classifier = _classifier;
     }
 
+    public opencv_ml.CvSVM get_classifierDesc() {
+        return _classifierDesc;
+    }
+
+    public void set_classifierDesc(opencv_ml.CvSVM _classifierDesc) {
+        this._classifierDesc = _classifierDesc;
+    }
+
     public List<String> get_images() {
         return _images;
     }
@@ -139,4 +154,7 @@ public class Brand {
         }
         return false;
     }
+
+
+
 }
