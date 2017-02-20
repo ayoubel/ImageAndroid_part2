@@ -3,6 +3,7 @@ package android.tpservicerest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.AssetManager;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
@@ -16,6 +17,7 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
+import com.android.volley.toolbox.ImageRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.JsonRequest;
 import com.android.volley.toolbox.StringRequest;
@@ -26,6 +28,7 @@ import org.bytedeco.javacpp.Pointer;
 import org.bytedeco.javacpp.opencv_core;
 import org.bytedeco.javacpp.opencv_features2d;
 import org.bytedeco.javacpp.opencv_nonfree;
+import org.bytedeco.javacv.CanvasFrame;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -35,6 +38,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+import static android.R.attr.maxHeight;
+import static android.R.attr.maxWidth;
+import static android.widget.ImageView.ScaleType;
 import static org.bytedeco.javacpp.opencv_highgui.imread;
 
 
@@ -59,6 +65,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     //Brands variables
     private ListOfBrands allBrands;
 
+    ScaleType SCALE_TYPE = ScaleType.CENTER;
     //VOCABULARY variables
     private File vocabulary;
     private opencv_core.Mat vocabularyMat;
@@ -90,6 +97,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         downloadJsonFile(url+"index.json", mRequestQueue);
         downloadVocabulary(this,url+"vocabulary.yml",mRequestQueue);
+        downloadImage(BEST_SCORE);
 
     }
 
@@ -217,6 +225,30 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         queue.add(stringRequest);
     }
 
+    protected void downloadImage(String brandToAnalyse){
+        String  BrandUrl = url +"/train_images/"+brandToAnalyse+"_16.jpg" ;
+        ImageRequest imageRequest = new ImageRequest(BrandUrl,
+                new Response.Listener<Bitmap>(){
+                    @Override
+                    public void onResponse(Bitmap response) {
+                        try{
+                            imageCaptured.setImageBitmap(response);
+
+                        }catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                },
+                maxWidth,maxHeight,SCALE_TYPE, Bitmap.Config.RGB_565,
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.i(tag,"Image Load Error");
+                    }
+                }
+
+        );
+    }
 
     /**
      * Set the vocabulary into a Mat opencv
