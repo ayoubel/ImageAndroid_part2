@@ -1,8 +1,10 @@
 package android.tpservicerest;
 
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.AssetManager;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
@@ -17,6 +19,7 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
+import com.android.volley.toolbox.ImageRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.JsonRequest;
 import com.android.volley.toolbox.StringRequest;
@@ -36,6 +39,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+import static android.R.attr.maxHeight;
+import static android.R.attr.maxWidth;
+import static android.widget.ImageView.ScaleType;
 import static org.bytedeco.javacpp.opencv_highgui.imread;
 
 
@@ -48,12 +54,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     // Request Code of the Library activity
     static int Library_RequestCode = 2;
 
+    ScaleType SCALE_TYPE = ScaleType.CENTER;
+
     private Button btnAnalysis;
     private Button btnCapture;
     private Button btnLibrary;
     private ImageView imageCaptured;
     private TextView textViewJson;
     private String url = "http://www-rech.telecom-lille.fr/nonfreesift/";
+
 
     private RequestQueue mRequestQueue;
     private Uri mImageUri;
@@ -75,6 +84,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+
+
         btnAnalysis = (Button) findViewById(R.id.btnAnalysis);
         btnCapture = (Button) findViewById(R.id.btnCapture);
         btnLibrary = (Button) findViewById(R.id.btnLibrary);
@@ -90,8 +101,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         allBrands = new ListOfBrands();
 
-        downloadJsonFile(url+"index.json", mRequestQueue);
-        downloadVocabulary(this,url+"vocabulary.yml",mRequestQueue);
+        downloadJsonFile(url+"index.json");
+        downloadVocabulary(this,url+"vocabulary.yml");
+
+
 
     }
 
@@ -155,10 +168,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      * Download the index file from the web site
      * Create all brands and save them in app
      * @param url the absolute path of the web site
-     * @param queue Queue that contains all callback
      */
-    protected void downloadJsonFile(String url, RequestQueue queue){
-
+    protected void downloadJsonFile(String url){
+        final ProgressDialog progressDialogJson = ProgressDialog.show(this, "Loading Json File", "Loading. Please wait...", false);
         //Create CallBack
         JsonRequest jsonRequest = new JsonObjectRequest(Request.Method.GET, url, null,
                 new Response.Listener<JSONObject>() {
@@ -194,6 +206,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             e.printStackTrace();
                         }
                         textViewJson.append("Nb brands loaded : " + allBrands.size());
+                        progressDialogJson.dismiss();
                     }
 
                 },
@@ -201,21 +214,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         textViewJson.setText("DID NOT WORK :/");
+                        progressDialogJson.dismiss();
                     }
                 }
         );
-        queue.add(jsonRequest);
+        mRequestQueue.add(jsonRequest);
+
     }
 
     /**
      * Download the vocabulary file from the web site
      * @param context context of this app
      * @param url the absolute path of the web site
-     * @param queue Queue that contains all callback
      */
-    protected void downloadVocabulary(final Context context, String url, RequestQueue queue){
+    protected void downloadVocabulary(final Context context, String url){
+        final ProgressDialog progressDialogVoca = ProgressDialog.show(this, "Loading Vocabulary", "Loading. Please wait...", false);
         //Create CallBack
-
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 new Response.Listener<String>() {
                     @Override
@@ -237,18 +251,50 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
+                        progressDialogVoca.dismiss();
                     }
+
                 },
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         Log.i(tag, "Vocabulary.yml Not Saved");
+                        progressDialogVoca.dismiss();
                     }
                 }
         );
-        queue.add(stringRequest);
+        mRequestQueue.add(stringRequest);
     }
 
+
+    protected void downloadImage(String brandToAnalyse){
+        String  BrandUrl = url +"train-images/"+brandToAnalyse+"_13.jpg" ;
+        Log.i(tag, "DownLoadImage : "+BrandUrl);
+        ImageRequest imageRequest = new ImageRequest(BrandUrl,
+                new Response.Listener<Bitmap>(){
+                    @Override
+                    public void onResponse(Bitmap response) {
+                        try{
+                            imageCaptured.setImageBitmap(response);
+                            Log.i(tag,"width = "+response.getWidth());
+
+
+                        }catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                },
+                maxWidth,maxHeight,SCALE_TYPE, Bitmap.Config.RGB_565,
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.i(tag,"Image Load Error");
+                    }
+                }
+
+        );
+        mRequestQueue.add(imageRequest);
+    }
 
     /**
      * Set the vocabulary into a Mat opencv
@@ -311,6 +357,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
         timePrediction = System.currentTimeMillis() - timePrediction;
         Log.i(tag,testFile.getName() + "  predicted as " + bestMatch + " in " + timePrediction + " ms");
+
+        //Display image in ImageView
+        downloadImage(bestMatch);
 
     }
 
