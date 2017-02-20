@@ -3,6 +3,7 @@ package android.tpservicerest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.AssetManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
@@ -55,6 +56,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private String url = "http://www-rech.telecom-lille.fr/nonfreesift/";
 
     private RequestQueue mRequestQueue;
+    private Uri mImageUri;
 
     //Brands variables
     private ListOfBrands allBrands;
@@ -116,6 +118,35 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
             default:
                 break;
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        // if image is captured by the
+
+        if((requestCode == Capture_RequestCode || requestCode == Library_RequestCode) && resultCode == RESULT_OK){
+
+            mImageUri = data.getData();
+            byte[] image = data.getByteArrayExtra("data");
+            try {
+                File testFile = File.createTempFile("capture", ".jpg", this.getCacheDir());
+                FileOutputStream outputStream = new FileOutputStream(testFile);
+                outputStream.write(image);
+                outputStream.close();
+                Log.i(tag, "Path image captured : "+testFile.getAbsolutePath());
+                imageCaptured.setImageURI(mImageUri);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            //Bundle extras = data.getExtras();
+            //Bitmap imageBitmap = (Bitmap) extras.get("data");
+            //imageCaptured.setImageBitmap(imageBitmap);
+            //Log.i(tag, "URi : "+mImageUri.getPath());
+
+
         }
     }
 
@@ -184,6 +215,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      */
     protected void downloadVocabulary(final Context context, String url, RequestQueue queue){
         //Create CallBack
+
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 new Response.Listener<String>() {
                     @Override
@@ -257,8 +289,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         //opencv_core.Mat imageTest = imread(this.filePath);
         File testFile = ToCache(this,"Data_BOW/TestImage/Pepsi_15.jpg","Pepsi_15.jpg");
         String path = testFile.getAbsolutePath();
-        Log.i(tag,testFile.getAbsolutePath());
-        opencv_core.Mat imageTest = imread(testFile.getAbsolutePath());
+        Log.i(tag,path);
+        opencv_core.Mat imageTest = imread(path);
         detector.detectAndCompute(imageTest, opencv_core.Mat.EMPTY, keypoints, inputDescriptors);
         bowide.compute(imageTest, keypoints, response_hist);
 
@@ -279,6 +311,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
         timePrediction = System.currentTimeMillis() - timePrediction;
         Log.i(tag,testFile.getName() + "  predicted as " + bestMatch + " in " + timePrediction + " ms");
+
     }
 
 
