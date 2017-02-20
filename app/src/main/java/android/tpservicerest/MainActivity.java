@@ -226,14 +226,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     protected void downloadImage(String brandToAnalyse){
-        String  BrandUrl = url +"/train_images/"+brandToAnalyse+"_13.jpg" ;
+        String  BrandUrl = url +"train-images/"+brandToAnalyse+"_13.jpg" ;
         ImageRequest imageRequest = new ImageRequest(BrandUrl,
                 new Response.Listener<Bitmap>(){
                     @Override
                     public void onResponse(Bitmap response) {
                         try{
                             imageCaptured.setImageBitmap(response);
-
                         }catch (Exception e) {
                             e.printStackTrace();
                         }
@@ -248,6 +247,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
 
         );
+        mRequestQueue.add(imageRequest);
     }
 
     /**
