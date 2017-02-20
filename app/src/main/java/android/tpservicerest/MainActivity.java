@@ -97,7 +97,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         downloadJsonFile(url+"index.json", mRequestQueue);
         downloadVocabulary(this,url+"vocabulary.yml",mRequestQueue);
-        downloadImage(BEST_SCORE);
+
 
     }
 
@@ -311,6 +311,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
         timePrediction = System.currentTimeMillis() - timePrediction;
         Log.i(tag,testFile.getName() + "  predicted as " + bestMatch + " in " + timePrediction + " ms");
+
+        //Display image in ImageView
+        downloadImage(bestMatch);
     }
 
 
