@@ -62,6 +62,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     ScaleType SCALE_TYPE = ScaleType.CENTER;
 
+    //Contains true if this app can get back the index.json, else false
+    private boolean connectionIsOk;
+
+    private boolean analyseFinished;
+
     //display elements
     private Button btnAnalysis;
     private Button btnCapture;
@@ -81,6 +86,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     //Brands variables
     private ListOfBrands allBrands;
+    private Brand bestBrandMatch;
 
     //VOCABULARY variables
     private File vocabulary;
@@ -102,6 +108,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         imageCaptured = (ImageView) findViewById(R.id.imageCaptured);
         textViewJson = (TextView) findViewById(R.id.textViewJson);
 
+        btnAnalysis.setEnabled(false);
+
 
         btnAnalysis.setOnClickListener(this);
         btnCapture.setOnClickListener(this);
@@ -116,6 +124,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         downloadJsonFile(url+"index.json");
         downloadVocabulary(this,url+"vocabulary.yml");
 
+
     }
 
     @Override
@@ -129,7 +138,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 try {
                     captureFile  = File.createTempFile("capture",".jpg",this.getExternalFilesDir(Environment.DIRECTORY_PICTURES));
                     filePath = captureFile.getAbsolutePath();
-                    mImageUri = FileProvider.getUriForFile(this,"com.example.android.fileprovider",captureFile);
+                    mImageUri = FileProvider.getUriForFile(this,"tpservicerest.fileprovider",captureFile);
                     Intent mediaCapture = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
                     mediaCapture.putExtra(MediaStore.EXTRA_OUTPUT, mImageUri);
                     Log.i(tag, "Start capture image to "+filePath);
@@ -145,8 +154,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
             //Click on image to crop it
             case R.id.imageCaptured:
-                Uri destination = Uri.fromFile(new File(getCacheDir(), "cropped"));
-                Crop.of(mImageUri, destination).asSquare().start(this);
+                if(analyseFinished){
+                    String url = bestBrandMatch.get_url();
+                    Intent intent = new Intent( Intent.ACTION_VIEW, Uri.parse( url ) );
+                    startActivity(intent);
+                }else{
+                    Uri destination = Uri.fromFile(new File(getCacheDir(), "cropped"));
+                    Crop.of(mImageUri, destination).withMaxSize(300,300).start(this);
+                }
+
                 break;
             //Click on Analysis Button
             case R.id.btnAnalysis:
@@ -160,12 +176,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
+        analyseFinished = false;
         // if image is captured by the camera
         if(requestCode == Capture_RequestCode && resultCode == RESULT_OK){
+
+
             Log.i(tag, "Image captured in "+filePath);
             Bitmap bmp = BitmapFactory.decodeFile(filePath);
+
             imageCaptured.setImageBitmap(bmp);
 
+            //allow analyse if there is an image and connection is ok
+            if(connectionIsOk){
+                btnAnalysis.setEnabled(true);
+            }
         }else
         // if image is selected in the phone library
         if (requestCode == Library_RequestCode && resultCode == RESULT_OK){
@@ -178,10 +203,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             filePath = cursor.getString(columnIndex);
             cursor.close();
 
-            Bitmap bmp = BitmapFactory.decodeFile(filePath);
             Log.i(tag,"Image selected from Library in " + filePath);
 
-            imageCaptured.setImageBitmap(bmp);
+            imageCaptured.setImageURI(mImageUri);
+
+            //allow analyse if there is an image and connection is ok
+            if(connectionIsOk){
+                btnAnalysis.setEnabled(true);
+            }
 
         }else
         // if the image was cropped
@@ -203,6 +232,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 new Response.Listener<JSONObject>() {
                     @Override
                     public void onResponse(JSONObject response) {
+                        connectionIsOk = true;
                         try {
                             JSONArray brands = response.getJSONArray("brands");
                             int nbBrands = brands.length();
@@ -240,8 +270,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
+                        connectionIsOk = false;
                         textViewJson.setText("No Connection.");
-                        btnAnalysis.setEnabled(false);
                         progressDialogJson.dismiss();
                     }
                 }
@@ -342,7 +372,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         vocabularyMat = new opencv_core.Mat(cvMat);
         Log.i(tag,"Vocabulary loaded " + vocabularyMat.rows() + " x " + vocabularyMat.cols());
         opencv_core.cvReleaseFileStorage(storage);
+    }
 
+
+    /**
+     * Analyse the image captured and display the result
+     */
+    protected void analyse(){
+        final ProgressDialog progressDialogAnal = ProgressDialog.show(this, "Loading Vocabulary", "Loading. Please wait...", false);
         // default parameters ""opencv2/features2d/features2d.hpp""
         detector = new opencv_nonfree.SIFT(0, 3, 0.04, 10, 1.6);
 
@@ -356,20 +393,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         //Set the dictionary with the vocabulary we created in the first step
         bowide.setVocabulary(vocabularyMat);
         Log.i(tag,"Vocabulary is set");
-    }
-
-
-    /**
-     * Analyse the image captured and display the result
-     */
-    protected void analyse(){
 
         opencv_core.Mat response_hist = new opencv_core.Mat();
         opencv_features2d.KeyPoint keypoints = new opencv_features2d.KeyPoint();
         opencv_core.Mat inputDescriptors = new opencv_core.Mat();
 
         //File testFile = ToCache(this,"Data_BOW/TestImage/Coca_15.jpg","Coca_15.jpg");
-        //File testFile = ToCache(this,"17419-photo.jpg","17419-photo.jpg");
         //filePath = testFile.getAbsolutePath();
         Log.i(tag,filePath);
         opencv_core.Mat imageTest = imread(filePath,1);
@@ -378,13 +407,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         // Finding best match
         float minf = Float.MAX_VALUE;
-        Brand bestBrandMatch = null;
+        bestBrandMatch = null;
 
         long timePrediction = System.currentTimeMillis();
         // loop for all classes
         for (int i = 0; i < allBrands.size(); i++) {
             // classifier prediction based on reconstructed histogram
             float res = allBrands.get(i).get_classifierDesc().predict(response_hist, true);
+            Log.i(tag,"Compare File with brand "+allBrands.get(i).get_brandName()+ " -> res = "+res);
             if (res < minf) {
                 minf = res;
                 bestBrandMatch = allBrands.get(i);
@@ -395,7 +425,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         //Download end Display brand image result in ImageView
         downloadImage(bestBrandMatch.get_images().get(0));
-
+        btnAnalysis.setEnabled(false);
+        progressDialogAnal.dismiss();
+        analyseFinished = true;
     }
 
 
