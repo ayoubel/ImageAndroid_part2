@@ -25,7 +25,8 @@
         android:text="Photos Library"
         android:id="@+id/btnLibrary"
         android:layout_alignParentTop="true"
-        android:layout_alignParentEnd="true" />
+        android:layout_alignParentEnd="true"
+        android:layout_above="@+id/imageCaptured" />
 
     <Button
         android:layout_width="wrap_content"
@@ -33,7 +34,8 @@
         android:text="Analysis"
         android:id="@+id/btnAnalysis"
         android:layout_alignParentBottom="true"
-        android:layout_toStartOf="@+id/btnLibrary" />
+        android:layout_toStartOf="@+id/btnLibrary"
+        android:layout_alignEnd="@+id/textViewJson" />
 
     <ImageView
         android:layout_width="match_parent"

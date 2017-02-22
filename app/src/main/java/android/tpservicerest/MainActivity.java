@@ -102,6 +102,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         imageCaptured = (ImageView) findViewById(R.id.imageCaptured);
         textViewJson = (TextView) findViewById(R.id.textViewJson);
 
+
         btnAnalysis.setOnClickListener(this);
         btnCapture.setOnClickListener(this);
         btnLibrary.setOnClickListener(this);
@@ -367,10 +368,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         opencv_features2d.KeyPoint keypoints = new opencv_features2d.KeyPoint();
         opencv_core.Mat inputDescriptors = new opencv_core.Mat();
 
-        File testFile = ToCache(this,"Data_BOW/TestImage/Coca_15.jpg","Coca_15.jpg");
-        filePath = testFile.getAbsolutePath();
+        //File testFile = ToCache(this,"Data_BOW/TestImage/Coca_15.jpg","Coca_15.jpg");
+        //File testFile = ToCache(this,"17419-photo.jpg","17419-photo.jpg");
+        //filePath = testFile.getAbsolutePath();
         Log.i(tag,filePath);
-        opencv_core.Mat imageTest = imread(filePath);
+        opencv_core.Mat imageTest = imread(filePath,1);
         detector.detectAndCompute(imageTest, opencv_core.Mat.EMPTY, keypoints, inputDescriptors);
         bowide.compute(imageTest, keypoints, response_hist);
 
