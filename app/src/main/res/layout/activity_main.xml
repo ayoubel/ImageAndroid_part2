@@ -43,7 +43,7 @@
         android:layout_above="@+id/btnAnalysis"
         android:layout_alignParentEnd="false"
         android:layout_below="@+id/btnCapture"
-        android:contentDescription="" />
+        android:contentDescription=""/>
 
     <TextView
         android:layout_width="wrap_content"

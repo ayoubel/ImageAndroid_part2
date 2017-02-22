@@ -4,16 +4,21 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.AssetManager;
+import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
+import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -24,6 +29,7 @@ import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.JsonRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.soundcloud.android.crop.Crop;
 
 import org.bytedeco.javacpp.Loader;
 import org.bytedeco.javacpp.Pointer;
@@ -56,16 +62,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     ScaleType SCALE_TYPE = ScaleType.CENTER;
 
+    //display elements
     private Button btnAnalysis;
     private Button btnCapture;
     private Button btnLibrary;
     private ImageView imageCaptured;
     private TextView textViewJson;
+
+    //request variables
     private String url = "http://www-rech.telecom-lille.fr/nonfreesift/";
-
-
     private RequestQueue mRequestQueue;
+
+    //Image treatment variables
     private Uri mImageUri;
+    private Uri mImageCroppedUri;
+    private File captureFile;
+    private String filePath;
 
     //Brands variables
     private ListOfBrands allBrands;
@@ -84,8 +96,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
-
         btnAnalysis = (Button) findViewById(R.id.btnAnalysis);
         btnCapture = (Button) findViewById(R.id.btnCapture);
         btnLibrary = (Button) findViewById(R.id.btnLibrary);
@@ -95,39 +105,51 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         btnAnalysis.setOnClickListener(this);
         btnCapture.setOnClickListener(this);
         btnLibrary.setOnClickListener(this);
-
+        imageCaptured.setOnClickListener(this);
 
         mRequestQueue = Volley.newRequestQueue(getApplicationContext());
 
         allBrands = new ListOfBrands();
 
+        //Get all necessaries files from the web site
         downloadJsonFile(url+"index.json");
         downloadVocabulary(this,url+"vocabulary.yml");
-
-
 
     }
 
     @Override
     public void onClick(View v) {
+
+
+
         switch (v.getId()) {
             //Click on Capture Button
             case R.id.btnCapture:
-                Intent mediaCapture = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                startActivityForResult(mediaCapture, Capture_RequestCode);
+                try {
+                    captureFile  = File.createTempFile("capture",".jpg",this.getExternalFilesDir(Environment.DIRECTORY_PICTURES));
+                    filePath = captureFile.getAbsolutePath();
+                    mImageUri = FileProvider.getUriForFile(this,"com.example.android.fileprovider",captureFile);
+                    Intent mediaCapture = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                    mediaCapture.putExtra(MediaStore.EXTRA_OUTPUT, mImageUri);
+                    Log.i(tag, "Start capture image to "+filePath);
+                    startActivityForResult(mediaCapture, Capture_RequestCode);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
                 break;
             //Click on Library Button
             case R.id.btnLibrary:
                 Intent mediaLibrary = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                 startActivityForResult(mediaLibrary, Library_RequestCode);
                 break;
+            //Click on image to crop it
+            case R.id.imageCaptured:
+                Uri destination = Uri.fromFile(new File(getCacheDir(), "cropped"));
+                Crop.of(mImageUri, destination).asSquare().start(this);
+                break;
             //Click on Analysis Button
             case R.id.btnAnalysis:
-
-                //filePath = mImageUri.getPath();
-                //Log.i(tag,this.filePath);
                 analyse();
-
                 break;
             default:
                 break;
@@ -137,29 +159,33 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        // if image is captured by the
+        // if image is captured by the camera
+        if(requestCode == Capture_RequestCode && resultCode == RESULT_OK){
+            Log.i(tag, "Image captured in "+filePath);
+            Bitmap bmp = BitmapFactory.decodeFile(filePath);
+            imageCaptured.setImageBitmap(bmp);
 
-        if((requestCode == Capture_RequestCode || requestCode == Library_RequestCode) && resultCode == RESULT_OK){
-
+        }else
+        // if image is selected in the phone library
+        if (requestCode == Library_RequestCode && resultCode == RESULT_OK){
             mImageUri = data.getData();
-            byte[] image = data.getByteArrayExtra("data");
-            try {
-                File testFile = File.createTempFile("capture", ".jpg", this.getCacheDir());
-                FileOutputStream outputStream = new FileOutputStream(testFile);
-                outputStream.write(image);
-                outputStream.close();
-                Log.i(tag, "Path image captured : "+testFile.getAbsolutePath());
-                imageCaptured.setImageURI(mImageUri);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
 
-            //Bundle extras = data.getExtras();
-            //Bitmap imageBitmap = (Bitmap) extras.get("data");
-            //imageCaptured.setImageBitmap(imageBitmap);
-            //Log.i(tag, "URi : "+mImageUri.getPath());
+            String[] filePathColumn = {MediaStore.Images.Media.DATA};
+            Cursor cursor = getContentResolver().query(mImageUri, filePathColumn, null, null, null);
+            cursor.moveToFirst();
+            int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
+            filePath = cursor.getString(columnIndex);
+            cursor.close();
 
+            Bitmap bmp = BitmapFactory.decodeFile(filePath);
+            Log.i(tag,"Image selected from Library in " + filePath);
 
+            imageCaptured.setImageBitmap(bmp);
+
+        }else
+        // if the image was cropped
+        if (requestCode == Crop.REQUEST_CROP) {
+            handleCrop(resultCode, data);
         }
     }
 
@@ -194,10 +220,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                     }
                                     brand.getClassifierFile(MainActivity.this,"http://www-rech.telecom-lille.fr/nonfreesift",mRequestQueue);
                                     allBrands.add(brand);
-                                    Log.i(tag,"brand : "+brand.get_brandName());
+                                    Log.i(tag,"downloadJsonFile : brand : "+brand.get_brandName());
                                 }
                                 else {
-                                    Log.i(tag,"brand : "+brand.get_brandName() + " already created.");
+                                    Log.i(tag,"downloadJsonFile : brand : "+brand.get_brandName() + " already created.");
                                 }
 
                             }
@@ -213,7 +239,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        textViewJson.setText("DID NOT WORK :/");
+                        textViewJson.setText("No Connection.");
+                        btnAnalysis.setEnabled(false);
                         progressDialogJson.dismiss();
                     }
                 }
@@ -241,9 +268,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             outputStream.write(response.getBytes());
                             outputStream.close();
                             if(vocabulary.exists()){
-                                Log.i(tag, vocabulary.getPath()+" Saved, size=" + vocabulary.length());
+                                Log.i(tag, vocabulary.getPath()+"downloadVocabulary : Saved, size=" + vocabulary.length());
                             }else {
-                                Log.i(tag, vocabulary.getPath()+" error to save");
+                                Log.i(tag, vocabulary.getPath()+"downloadVocabulary :  error to save");
                             }
                             //set the vocabulary
                             setVocabulary();
@@ -258,7 +285,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        Log.i(tag, "Vocabulary.yml Not Saved");
+                        Log.i(tag, "downloadVocabulary : Vocabulary.yml Not Saved");
                         progressDialogVoca.dismiss();
                     }
                 }
@@ -267,16 +294,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
 
-    protected void downloadImage(String brandToAnalyse){
-        String  BrandUrl = url +"train-images/"+brandToAnalyse+"_13.jpg" ;
-        Log.i(tag, "DownLoadImage : "+BrandUrl);
+    /**
+     * Download a brand's image from the web site
+     * and display in this application
+     * File must be in the folder "train-images/"
+     * @param fileName of the file to download
+     */
+    protected void downloadImage(String fileName){
+        String  BrandUrl = url +"train-images/"+fileName ;
+        Log.i(tag, "DownLoad Image : "+BrandUrl);
         ImageRequest imageRequest = new ImageRequest(BrandUrl,
                 new Response.Listener<Bitmap>(){
                     @Override
                     public void onResponse(Bitmap response) {
                         try{
                             imageCaptured.setImageBitmap(response);
-                            Log.i(tag,"width = "+response.getWidth());
+                            Log.i(tag,"downloadImage : width = "+response.getWidth());
 
 
                         }catch (Exception e) {
@@ -288,7 +321,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        Log.i(tag,"Image Load Error");
+                        Log.i(tag,"downloadImage : Image Load Error");
                     }
                 }
 
@@ -297,16 +330,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     /**
-     * Set the vocabulary into a Mat opencv
+     * Set the vocabulary into a descriptor
      */
     protected void setVocabulary(){
-        Log.i(tag,"read vocabulary from file... ");
+        Log.i(tag,"Read vocabulary from file... ");
         Loader.load(opencv_core.class);
         opencv_core.CvFileStorage storage = opencv_core.cvOpenFileStorage(vocabulary.getAbsolutePath(), null, opencv_core.CV_STORAGE_READ);
         Pointer p = opencv_core.cvReadByName(storage, null, "vocabulary", opencv_core.cvAttrList());
         opencv_core.CvMat cvMat = new opencv_core.CvMat(p);
         vocabularyMat = new opencv_core.Mat(cvMat);
-        Log.i(tag,"vocabulary loaded " + vocabularyMat.rows() + " x " + vocabularyMat.cols());
+        Log.i(tag,"Vocabulary loaded " + vocabularyMat.rows() + " x " + vocabularyMat.cols());
         opencv_core.cvReleaseFileStorage(storage);
 
         // default parameters ""opencv2/features2d/features2d.hpp""
@@ -317,54 +350,61 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         matcher = new opencv_features2d.FlannBasedMatcher();
 
         //create BoF (or BoW) descriptor extractor
-
         bowide = new opencv_features2d.BOWImgDescriptorExtractor(detector.asDescriptorExtractor(), matcher);
 
         //Set the dictionary with the vocabulary we created in the first step
         bowide.setVocabulary(vocabularyMat);
-        Log.i(tag,"Vocab is set");
+        Log.i(tag,"Vocabulary is set");
     }
 
 
+    /**
+     * Analyse the image captured and display the result
+     */
     protected void analyse(){
 
         opencv_core.Mat response_hist = new opencv_core.Mat();
         opencv_features2d.KeyPoint keypoints = new opencv_features2d.KeyPoint();
         opencv_core.Mat inputDescriptors = new opencv_core.Mat();
 
-        //opencv_core.Mat imageTest = imread(this.filePath);
-        File testFile = ToCache(this,"Data_BOW/TestImage/Pepsi_15.jpg","Pepsi_15.jpg");
-        String path = testFile.getAbsolutePath();
-        Log.i(tag,path);
-        opencv_core.Mat imageTest = imread(path);
+        File testFile = ToCache(this,"Data_BOW/TestImage/Coca_15.jpg","Coca_15.jpg");
+        filePath = testFile.getAbsolutePath();
+        Log.i(tag,filePath);
+        opencv_core.Mat imageTest = imread(filePath);
         detector.detectAndCompute(imageTest, opencv_core.Mat.EMPTY, keypoints, inputDescriptors);
         bowide.compute(imageTest, keypoints, response_hist);
 
         // Finding best match
         float minf = Float.MAX_VALUE;
-        String bestMatch = null;
+        Brand bestBrandMatch = null;
 
         long timePrediction = System.currentTimeMillis();
         // loop for all classes
         for (int i = 0; i < allBrands.size(); i++) {
             // classifier prediction based on reconstructed histogram
             float res = allBrands.get(i).get_classifierDesc().predict(response_hist, true);
-            //System.out.println(class_names[i] + " is " + res);
             if (res < minf) {
                 minf = res;
-                bestMatch = allBrands.get(i).get_brandName();
+                bestBrandMatch = allBrands.get(i);
             }
         }
         timePrediction = System.currentTimeMillis() - timePrediction;
-        Log.i(tag,testFile.getName() + "  predicted as " + bestMatch + " in " + timePrediction + " ms");
+        Log.i(tag,"File predicted as " + bestBrandMatch.get_brandName() + " in " + timePrediction + " ms");
 
-        //Display image in ImageView
-        downloadImage(bestMatch);
+        //Download end Display brand image result in ImageView
+        downloadImage(bestBrandMatch.get_images().get(0));
 
     }
 
 
-
+    /**
+     * Save in the application's cache a file from the assets folder
+     *
+     * @param context of the application
+     * @param Path from the assets folder
+     * @param fileName of the file to save
+     * @return a file save in the cache
+     */
     public static File ToCache(Context context, String Path, String fileName) {
         InputStream input;
         FileOutputStream output;
@@ -387,6 +427,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         } catch (IOException e) {
             e.printStackTrace();
             return null;
+        }
+    }
+
+
+    /**
+     * Save the image cropped in the imageView
+     *
+     * @param resultCode of the crop activity
+     * @param result of the crop activity
+     */
+    private void handleCrop(int resultCode, Intent result) {
+        if (resultCode == RESULT_OK) {
+            mImageCroppedUri = Crop.getOutput(result);
+            filePath = mImageCroppedUri.getPath();
+            imageCaptured.setImageURI(mImageCroppedUri);
+            Log.i("Image cropped in ", Crop.getOutput(result).getPath());
+        } else if (resultCode == Crop.RESULT_ERROR) {
+            Toast.makeText(this, Crop.getError(result).getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 }

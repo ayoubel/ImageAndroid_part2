@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">tpServiceRest</string>
+    <string name="title_activity_crop">CropActivity</string>
 </resources>
