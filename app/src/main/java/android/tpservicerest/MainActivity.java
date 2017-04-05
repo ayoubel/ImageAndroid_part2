@@ -124,6 +124,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         downloadJsonFile(url+"index.json");
         downloadVocabulary(this,url+"vocabulary.yml");
 
+        textViewJson.append("\n Take a picture.\n");
 
     }
 
@@ -217,6 +218,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (requestCode == Crop.REQUEST_CROP) {
             handleCrop(resultCode, data);
         }
+
+        textViewJson.setText("Analyse this image");
+        textViewJson.append("\nor click on it to crop");
+        textViewJson.append("\nor select a new image.");
     }
 
 
@@ -379,7 +384,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      * Analyse the image captured and display the result
      */
     protected void analyse(){
-        final ProgressDialog progressDialogAnal = ProgressDialog.show(this, "Loading Vocabulary", "Loading. Please wait...", false);
         // default parameters ""opencv2/features2d/features2d.hpp""
         detector = new opencv_nonfree.SIFT(0, 3, 0.04, 10, 1.6);
 
@@ -426,8 +430,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         //Download end Display brand image result in ImageView
         downloadImage(bestBrandMatch.get_images().get(0));
         btnAnalysis.setEnabled(false);
-        progressDialogAnal.dismiss();
         analyseFinished = true;
+        textViewJson.setText("result : "+bestBrandMatch.get_brandName());
+        textViewJson.append("\nClick Image to web site");
+        textViewJson.append("\nor select a new image.");
     }
 
 

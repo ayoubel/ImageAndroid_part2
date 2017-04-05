@@ -9,7 +9,7 @@ import java.util.ArrayList;
 public class ListOfBrands extends ArrayList<Brand> {
 
     /**
-     *
+     * Search if this contains already a Brand with the same name of o.
      * @param o Object
      * @return true if it contains a brand with the same name, else false
      */
