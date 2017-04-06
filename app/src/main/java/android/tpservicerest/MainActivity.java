@@ -75,7 +75,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView textViewJson;
 
     //request variables
-    private String url = "http://www-rech.telecom-lille.fr/nonfreesift/";
+    //private String url = "http://www-rech.telecom-lille.fr/nonfreesift/";
+    private String url = "http://www-rech.telecom-lille.fr/freeorb/";
     private RequestQueue mRequestQueue;
 
     //Image treatment variables
@@ -121,7 +122,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         allBrands = new ListOfBrands();
 
         //Get all necessaries files from the web site
-        downloadJsonFile(url+"index.json");
+        downloadJsonFile(url);
         downloadVocabulary(this,url+"vocabulary.yml");
 
         textViewJson.append("\n Take a picture.\n");
@@ -230,10 +231,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      * Create all brands and save them in app
      * @param url the absolute path of the web site
      */
-    protected void downloadJsonFile(String url){
+    protected void downloadJsonFile(final String url){
         final ProgressDialog progressDialogJson = ProgressDialog.show(this, "Loading Json File", "Loading. Please wait...", false);
         //Create CallBack
-        JsonRequest jsonRequest = new JsonObjectRequest(Request.Method.GET, url, null,
+        JsonRequest jsonRequest = new JsonObjectRequest(Request.Method.GET, url+"index.json", null,
                 new Response.Listener<JSONObject>() {
                     @Override
                     public void onResponse(JSONObject response) {
@@ -252,9 +253,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                     brand.set_classifier(jsonBrand.getString("classifier"));
                                     JSONArray images = jsonBrand.getJSONArray("images");
                                     for(int j=0;j<images.length();j++){
-                                        brand.addImage(images.getString(i));
+                                        if(!images.isNull(j)){
+                                            brand.addImage(images.getString(j));
                                     }
-                                    brand.getClassifierFile(MainActivity.this,"http://www-rech.telecom-lille.fr/nonfreesift",mRequestQueue);
+                                    }
+                                    brand.getClassifierFile(MainActivity.this,url,mRequestQueue);
                                     allBrands.add(brand);
                                     Log.i(tag,"downloadJsonFile : brand : "+brand.get_brandName());
                                 }
@@ -304,9 +307,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             outputStream.write(response.getBytes());
                             outputStream.close();
                             if(vocabulary.exists()){
-                                Log.i(tag, vocabulary.getPath()+"downloadVocabulary : Saved, size=" + vocabulary.length());
+                                Log.i(tag, vocabulary.getPath()+" downloadVocabulary : Saved, size=" + vocabulary.length());
                             }else {
-                                Log.i(tag, vocabulary.getPath()+"downloadVocabulary :  error to save");
+                                Log.i(tag, vocabulary.getPath()+" downloadVocabulary :  error to save");
                             }
                             //set the vocabulary
                             setVocabulary();
